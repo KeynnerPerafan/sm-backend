@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 from decouple import config
+import dj_database_url
 
 # Cargar .env
 load_dotenv()
@@ -33,7 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # Whitenoise: arch estáticos producción
+    # Whitenoise
     "whitenoise.runserver_nostatic",
 
     # Terceros
@@ -59,7 +60,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # Static en producción
+
+    # Whitenoise para archivos estáticos
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -97,20 +100,19 @@ WSGI_APPLICATION = "streaming_mania_api.wsgi.application"
 # =            DATABASES               =
 # ======================================
 
-# Si Railway define DATABASE_URL → usar PostgreSQL automáticamente
-if os.getenv("DATABASE_URL"):
-    import dj_database_url
+DATABASE_URL = os.getenv("DATABASE_URL")
 
+if DATABASE_URL:
+    # PRODUCCIÓN → Supabase
     DATABASES = {
-        "default": dj_database_url.config(
-            default=os.getenv("DATABASE_URL"),
+        "default": dj_database_url.parse(
+            DATABASE_URL,
             conn_max_age=1800,
-            ssl_require=False,
+            ssl_require=True,     # <— OBLIGATORIO EN SUPABASE
         )
     }
-
 else:
-    # Tu configuración local (MySQL)
+    # LOCAL → MySQL
     DATABASES = {
         "default": {
             "ENGINE": config("DB_ENGINE", default="django.db.backends.mysql"),
@@ -136,15 +138,13 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "ALGORITHM": "HS256",
     "SIGNING_KEY": SECRET_KEY,
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
 }
 
 # ======================================

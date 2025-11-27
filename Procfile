@@ -1,1 +1,1 @@
-web: gunicorn streaming_mania_api.wsgi
+web: python manage.py migrate && gunicorn streaming_mania_api.wsgi
