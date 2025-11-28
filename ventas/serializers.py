@@ -90,9 +90,16 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
 # =========================================================
 class VentaSerializer(serializers.ModelSerializer):
     vendedor_nombre = serializers.ReadOnlyField(source="vendedor.username")
-    cliente_nombre = serializers.ReadOnlyField(source="cliente.nombre", default=None)
-    distribuidor_nombre = serializers.ReadOnlyField(source="distribuidor.nombre", default=None)
+
+    # 🔥 ARREGLADO
+    cliente_nombre = serializers.SerializerMethodField()
+    distribuidor_nombre = serializers.SerializerMethodField()
     proveedor_nombre = serializers.ReadOnlyField(source="proveedor.nombre")
+
+    # 🔥 INFORMACIÓN COMPLETA PARA LA APP MÓVIL
+    cliente_info = serializers.SerializerMethodField()
+    distribuidor_info = serializers.SerializerMethodField()
+    proveedor_info = serializers.SerializerMethodField()
 
     detalles = VentaDetalleSerializer(many=True)
 
@@ -101,19 +108,27 @@ class VentaSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "tipo_venta",
-            "cliente", "cliente_nombre",
-            "distribuidor", "distribuidor_nombre",
+
+            "cliente", "cliente_nombre", "cliente_info",
+            "distribuidor", "distribuidor_nombre", "distribuidor_info",
+
             "vendedor", "vendedor_nombre",
-            "proveedor", "proveedor_nombre",
+
+            "proveedor", "proveedor_nombre", "proveedor_info",
+
             "numero_pedido_proveedor", "numero_pedido",
             "fecha_compra",
-            "estado_pago", "medio_pago", "es_garantia", "es_gabi",
+
+            "estado_pago", "medio_pago",
+            "es_garantia", "es_gabi",
             "comentario",
+
             "total_costo",
             "total_precio",
             "descuento_porcentaje",
             "descuento_valor",
             "total_final",
+
             "detalles",
             "creado", "actualizado",
         ]
@@ -124,6 +139,53 @@ class VentaSerializer(serializers.ModelSerializer):
             "total_final",
             "creado", "actualizado",
         ]
+
+    # ======================================================
+    #             CAMPOS CALCULADOS CORREGIDOS
+    # ======================================================
+
+    def get_cliente_nombre(self, obj):
+        if obj.cliente:
+            return obj.cliente.usuario.username
+        return None
+
+    def get_distribuidor_nombre(self, obj):
+        if obj.distribuidor:
+            return obj.distribuidor.user.username
+        return None
+
+    def get_cliente_info(self, obj):
+        c = obj.cliente
+        if not c:
+            return None
+        return {
+            "id": c.id,
+            "usuario_username": c.usuario.username,
+            "usuario_email": c.usuario.email,
+            "telefono": c.telefono,
+        }
+
+    def get_distribuidor_info(self, obj):
+        d = obj.distribuidor
+        if not d:
+            return None
+        return {
+            "id": d.id,
+            "username": d.user.username,
+            "email": d.user.email,
+            "empresa": d.empresa,
+            "telefono": d.telefono,
+        }
+
+    def get_proveedor_info(self, obj):
+        p = obj.proveedor
+        if not p:
+            return None
+        return {
+            "id": p.id,
+            "nombre": p.nombre,
+            "iniciales": p.iniciales,
+        }
 
     def to_internal_value(self, data):
         # Pasamos contexto (request, etc.) al child serializer
