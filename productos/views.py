@@ -22,3 +22,10 @@ class ProductoViewSet(viewsets.ModelViewSet):
             return qs
 
         return qs.filter(activo=True)
+
+
+@api_view(["GET"])
+def buscar_productos(request):
+    q = request.GET.get("q", "").strip()
+    productos = Producto.objects.filter(nombre__icontains=q)[:20]
+    return Response(ProductoSerializer(productos, many=True).data)
