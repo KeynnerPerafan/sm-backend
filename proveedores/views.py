@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from .models import Proveedor
 from .serializers import ProveedorSerializer
 from .permissions import IsAdmin
+from rest_framework import filters
+
 
 class ProveedorViewSet(viewsets.ModelViewSet):
     queryset = Proveedor.objects.all().order_by("-creado")
@@ -17,3 +19,10 @@ def buscar_proveedores(request):
 
     proveedores = Proveedor.objects.filter(nombre__icontains=q)[:15]
     return Response(ProveedorSerializer(proveedores, many=True).data)
+
+
+class ProveedorViewSet(viewsets.ModelViewSet):
+    queryset = Proveedor.objects.all()
+    serializer_class = ProveedorSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["nombre", "iniciales"]

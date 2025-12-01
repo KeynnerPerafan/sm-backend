@@ -1,9 +1,12 @@
+from urllib import response
 from rest_framework.decorators import api_view
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import Producto
 from .serializers import ProductoSerializer
 from core.permissions import IsAdminOrVendor
+from rest_framework import filters
+
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
@@ -29,4 +32,11 @@ class ProductoViewSet(viewsets.ModelViewSet):
 def buscar_productos(request):
     q = request.GET.get("q", "").strip()
     productos = Producto.objects.filter(nombre__icontains=q)[:20]
-    return Response(ProductoSerializer(productos, many=True).data)
+    return response(ProductoSerializer(productos, many=True).data)
+
+
+class ProductoViewSet(viewsets.ModelViewSet):
+    queryset = Producto.objects.all()
+    serializer_class = ProductoSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["nombre", "descripcion"]
