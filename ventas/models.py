@@ -55,7 +55,9 @@ class Venta(models.Model):
     vendedor = models.ForeignKey(
         Usuario,
         on_delete=models.PROTECT,
-        related_name="ventas"
+        related_name="ventas",
+        null=True,
+        blank=True
     )
     proveedor = models.ForeignKey(
         Proveedor,
