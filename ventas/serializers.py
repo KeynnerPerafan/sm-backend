@@ -7,7 +7,6 @@ from productos.models import Producto
 from productos.serializers import ProductoSerializer
 
 
-
 # =========================================================
 #   PROVEEDOR
 # =========================================================
@@ -15,6 +14,49 @@ class ProveedorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Proveedor
         fields = ["id", "nombre", "iniciales", "contacto", "telefono"]
+
+
+
+# =========================================================
+#   LISTADO LIGERO PARA VENTAS (React + Flutter)
+# =========================================================
+class VentaListSerializer(serializers.ModelSerializer):
+    cliente_nombre = serializers.SerializerMethodField()
+    distribuidor_nombre = serializers.SerializerMethodField()
+    proveedor_nombre = serializers.ReadOnlyField(source="proveedor.nombre")
+
+    class Meta:
+        model = Venta
+        fields = [
+            "id",
+            "tipo_venta",
+
+            "cliente",
+            "cliente_nombre",
+
+            "distribuidor",
+            "distribuidor_nombre",
+
+            "proveedor",
+            "proveedor_nombre",
+
+            "estado_pago",
+            "medio_pago",
+
+            "total_final",
+            "fecha_compra",
+        ]
+
+    def get_cliente_nombre(self, obj):
+        if obj.cliente:
+            return obj.cliente.usuario.username
+        return None
+
+    def get_distribuidor_nombre(self, obj):
+        if obj.distribuidor:
+            return obj.distribuidor.user.username
+        return None
+
 
 
 # =========================================================
@@ -25,9 +67,9 @@ class VentaDetalleListSerializer(serializers.ListSerializer):
     Asegura que el contexto (incluyendo venta) se pase a cada ítem.
     """
     def to_internal_value(self, data):
-        # Propagamos contexto al child serializer
         self.child.context.update(self.context)
         return super().to_internal_value(data)
+
 
 
 # =========================================================
@@ -36,16 +78,26 @@ class VentaDetalleListSerializer(serializers.ListSerializer):
 class VentaDetalleSerializer(serializers.ModelSerializer):
     producto_nombre = serializers.ReadOnlyField(source="producto.nombre")
     producto_info = ProductoSerializer(read_only=True, source="producto")
-    
 
     class Meta:
         model = VentaDetalle
         list_serializer_class = VentaDetalleListSerializer
         fields = [
-            "id", "producto", "producto_nombre", "producto_info", "cantidad",
-            "costo_unitario", "precio_unitario",
-            "fecha_vencimiento", "credenciales", "comentario",
-            "creado", "actualizado"
+            "id",
+            "producto",
+            "producto_nombre",
+            "producto_info",
+
+            "cantidad",
+            "costo_unitario",
+            "precio_unitario",
+
+            "fecha_vencimiento",
+            "credenciales",
+            "comentario",
+
+            "creado",
+            "actualizado",
         ]
         read_only_fields = ["creado", "actualizado"]
 
@@ -57,7 +109,7 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
 
         venta = self.context.get("venta", None)
 
-        # Precio por defecto si no viene
+        # Precio por defecto
         if venta and not data.get("precio_unitario"):
             data["precio_unitario"] = (
                 producto.precio_distribuidor
@@ -65,11 +117,11 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
                 else producto.precio_cliente
             )
 
-        # Costo por defecto si no viene
+        # Costo por defecto
         if not data.get("costo_unitario"):
             data["costo_unitario"] = producto.costo_base
 
-        # Fecha vencimiento automática
+        # Fecha vencimiento
         if venta and not data.get("fecha_vencimiento"):
             base = venta.fecha_compra
         elif not data.get("fecha_vencimiento"):
@@ -85,18 +137,17 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
         return data
 
 
+
 # =========================================================
-#   VENTA
+#   SERIALIZER COMPLETO (DETALLE / CREAR / EDITAR)
 # =========================================================
 class VentaSerializer(serializers.ModelSerializer):
     vendedor_nombre = serializers.ReadOnlyField(source="vendedor.username")
 
-    # 🔥 ARREGLADO
     cliente_nombre = serializers.SerializerMethodField()
     distribuidor_nombre = serializers.SerializerMethodField()
     proveedor_nombre = serializers.ReadOnlyField(source="proveedor.nombre")
 
-    # 🔥 INFORMACIÓN COMPLETA PARA LA APP MÓVIL
     cliente_info = serializers.SerializerMethodField()
     distribuidor_info = serializers.SerializerMethodField()
     proveedor_info = serializers.SerializerMethodField()
@@ -109,18 +160,29 @@ class VentaSerializer(serializers.ModelSerializer):
             "id",
             "tipo_venta",
 
-            "cliente", "cliente_nombre", "cliente_info",
-            "distribuidor", "distribuidor_nombre", "distribuidor_info",
+            "cliente",
+            "cliente_nombre",
+            "cliente_info",
 
-            "vendedor", "vendedor_nombre",
+            "distribuidor",
+            "distribuidor_nombre",
+            "distribuidor_info",
 
-            "proveedor", "proveedor_nombre", "proveedor_info",
+            "vendedor",
+            "vendedor_nombre",
 
-            "numero_pedido_proveedor", "numero_pedido",
+            "proveedor",
+            "proveedor_nombre",
+            "proveedor_info",
+
+            "numero_pedido_proveedor",
+            "numero_pedido",
             "fecha_compra",
 
-            "estado_pago", "medio_pago",
-            "es_garantia", "es_gabi",
+            "estado_pago",
+            "medio_pago",
+            "es_garantia",
+            "es_gabi",
             "comentario",
 
             "total_costo",
@@ -130,20 +192,21 @@ class VentaSerializer(serializers.ModelSerializer):
             "total_final",
 
             "detalles",
-            "creado", "actualizado",
+            "creado",
+            "actualizado",
         ]
         read_only_fields = [
             "numero_pedido",
             "total_costo",
             "total_precio",
             "total_final",
-            "creado", "actualizado",
+            "creado",
+            "actualizado",
         ]
 
-    # ======================================================
-    #             CAMPOS CALCULADOS CORREGIDOS
-    # ======================================================
-
+    # ============================
+    # CAMPOS CALCULADOS
+    # ============================
     def get_cliente_nombre(self, obj):
         if obj.cliente:
             return obj.cliente.usuario.username
@@ -187,8 +250,10 @@ class VentaSerializer(serializers.ModelSerializer):
             "iniciales": p.iniciales,
         }
 
+    # ============================
+    # CREAR / ACTUALIZAR
+    # ============================
     def to_internal_value(self, data):
-        # Pasamos contexto (request, etc.) al child serializer
         self.fields["detalles"].child.context.update(self.context)
         return super().to_internal_value(data)
 
@@ -209,11 +274,8 @@ class VentaSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         detalles_data = validated_data.pop("detalles", [])
-
-        # Crear la venta primero
         venta = Venta.objects.create(**validated_data)
 
-        # Crear cada detalle usando los datos YA validados
         for d in detalles_data:
             VentaDetalle.objects.create(venta=venta, **d)
 
@@ -223,12 +285,10 @@ class VentaSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         detalles_data = validated_data.pop("detalles", None)
 
-        # Actualizar campos simples de la venta
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         instance.save()
 
-        # Si llegan detalles, reemplazarlos
         if detalles_data is not None:
             instance.detalles.all().delete()
             for d in detalles_data:
