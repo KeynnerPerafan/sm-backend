@@ -29,6 +29,9 @@ class VentaListSerializer(serializers.ModelSerializer):
     distribuidor_info = serializers.SerializerMethodField()
     proveedor_info = serializers.SerializerMethodField()
 
+    # 🔥 NUEVO: indica si alguna credencial es renovable
+    tiene_renovables = serializers.SerializerMethodField()
+
     class Meta:
         model = Venta
         fields = [
@@ -59,8 +62,14 @@ class VentaListSerializer(serializers.ModelSerializer):
             "es_garantia",
             "es_gabi",
 
+            "tiene_renovables",   # 🔥 añadido al listado
+
             "total_final",
         ]
+
+    # =========================================================
+    #   CAMPOS CALCULADOS
+    # =========================================================
 
     def get_cliente_nombre(self, obj):
         if obj.cliente:
@@ -102,6 +111,20 @@ class VentaListSerializer(serializers.ModelSerializer):
             "iniciales": p.iniciales,
         }
 
+    # =========================================================
+    #   🔥 NUEVO: DETECTAR SI HAY CREDENCIALES RENOVABLES
+    # =========================================================
+    def get_tiene_renovables(self, obj):
+        """
+        Devuelve True si ALGUNA credencial en ALGÚN detalle
+        tiene renovable=True
+        """
+        for d in obj.detalles.all():
+            for cred in (d.credenciales or []):
+                if cred.get("renovable") is True:
+                    return True
+        return False
+
 
 # =========================================================
 #   DETALLE SERIALIZER
@@ -130,7 +153,7 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
             "precio_unitario",
 
             "fecha_vencimiento",
-            "credenciales",   # ← renovable vive aquí dentro
+            "credenciales",   # renovable vive aquí
             "comentario",
 
             "creado",
@@ -146,7 +169,7 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
 
         venta = self.context.get("venta", None)
 
-        # Precio por defecto
+        # Precio por tipo
         if venta and not data.get("precio_unitario"):
             data["precio_unitario"] = (
                 producto.precio_distribuidor
@@ -154,11 +177,11 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
                 else producto.precio_cliente
             )
 
-        # Costo por defecto
+        # Costo base
         if not data.get("costo_unitario"):
             data["costo_unitario"] = producto.costo_base
 
-        # Fecha vencimiento por defecto
+        # Fecha vencimiento
         if venta and not data.get("fecha_vencimiento"):
             base = venta.fecha_compra
         elif not data.get("fecha_vencimiento"):
@@ -172,13 +195,13 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
             )
 
         # =========================================================
-        #   🔥 AGREGAR CAMPO "renovable" A LAS CREDENCIALES
+        #   🔥 ASEGURAR QUE "renovable" EXISTA EN TODAS LAS CREDENCIALES
         # =========================================================
         credenciales = data.get("credenciales", [])
 
         for cred in credenciales:
             if "renovable" not in cred:
-                cred["renovable"] = False  # valor por defecto
+                cred["renovable"] = False
 
         data["credenciales"] = credenciales
 
@@ -252,6 +275,7 @@ class VentaSerializer(serializers.ModelSerializer):
         ]
 
     # ============================ CAMPOS CALCULADOS ============================
+
     def get_cliente_nombre(self, obj):
         if obj.cliente:
             return obj.cliente.usuario.username
@@ -296,6 +320,7 @@ class VentaSerializer(serializers.ModelSerializer):
         }
 
     # ============================ CREAR / EDITAR ============================
+
     def to_internal_value(self, data):
         self.fields["detalles"].child.context.update(self.context)
         return super().to_internal_value(data)
