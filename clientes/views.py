@@ -5,10 +5,11 @@ from .serializers import ClienteSerializer
 from .permissions import IsAdminOrSellerOrReadOwn
 
 class ClienteViewSet(viewsets.ModelViewSet):
-    queryset = Cliente.objects.select_related("usuario").all()
+    queryset = Cliente.objects.all().order_by('-id')
     serializer_class = ClienteSerializer
     permission_classes = [IsAuthenticated, IsAdminOrSellerOrReadOwn]
 
+    # 🔍 Búsqueda + Ordenamiento (lo necesario)
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["usuario__username", "usuario__email", "telefono", "ciudad"]
     ordering_fields = ["fecha_registro", "ciudad", "activo"]
@@ -18,10 +19,14 @@ class ClienteViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset()
         user = self.request.user
 
-        # Admin/Vendedor ven todos; cliente ve solo su registro
-        is_admin = user.is_staff or user.is_superuser
-        is_seller = getattr(user, "rol", "").lower() == "vendedor" if hasattr(user, "rol") else False
-
-        if is_admin or is_seller:
+        # Admin / Superuser = ve TODO
+        if user.is_staff or user.is_superuser:
             return qs
+
+        # Vendedor = ve TODO (si tu sistema maneja "rol")
+        rol = getattr(user, "rol", "").lower()
+        if rol == "vendedor":
+            return qs
+
+        # Cliente = solo ve su propio registro
         return qs.filter(usuario=user)

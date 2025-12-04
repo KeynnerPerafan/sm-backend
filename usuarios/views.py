@@ -3,6 +3,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Usuario
+from .serializers import UsuarioSerializer
 
 from .serializers import (
     LoginSerializer,
@@ -39,9 +44,17 @@ class ProfileView(APIView):
 # CRUD Usuarios (solo para admin)
 # ---------------------------------------
 class UsuarioViewSet(viewsets.ModelViewSet):
-    queryset = Usuario.objects.all().order_by("id")
+    queryset = Usuario.objects.all().order_by('-id')
     serializer_class = UsuarioSerializer
     permission_classes = [IsAdminUser]
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+
+    # 🔍 Campos permitidos para búsqueda
+    search_fields = [
+        "username",
+        "email",
+        "rol",
+    ]
 
 
 # ---------------------------------------
