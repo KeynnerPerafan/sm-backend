@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 
 from .models import Proveedor, Venta, VentaDetalle
 from .serializers import ProveedorSerializer, VentaSerializer, VentaDetalleSerializer
@@ -34,7 +35,14 @@ class ProveedorViewSet(viewsets.ModelViewSet):
 # ============================================
 # VENTAS
 # ============================================
+class VentaPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
 class VentaViewSet(viewsets.ModelViewSet):
+    queryset = Venta.objects.all()
+    pagination_class = VentaPagination 
     serializer_class = VentaSerializer
     permission_classes = [IsAuthenticated, IsAdminOrVendor]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
