@@ -16,35 +16,50 @@ class ProveedorSerializer(serializers.ModelSerializer):
         fields = ["id", "nombre", "iniciales", "contacto", "telefono"]
 
 
-
 # =========================================================
-#   LISTADO LIGERO PARA VENTAS (React + Flutter)
+#   LISTADO LIGERO PARA TABLAS (React + Flutter)
 # =========================================================
 class VentaListSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.SerializerMethodField()
     distribuidor_nombre = serializers.SerializerMethodField()
+    vendedor_nombre = serializers.ReadOnlyField(source="vendedor.username")
     proveedor_nombre = serializers.ReadOnlyField(source="proveedor.nombre")
+
+    cliente_info = serializers.SerializerMethodField()
+    distribuidor_info = serializers.SerializerMethodField()
+    proveedor_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Venta
         fields = [
             "id",
+            "numero_pedido",
+            "numero_pedido_proveedor",
+
             "tipo_venta",
 
             "cliente",
             "cliente_nombre",
+            "cliente_info",
 
             "distribuidor",
             "distribuidor_nombre",
+            "distribuidor_info",
 
             "proveedor",
             "proveedor_nombre",
+            "proveedor_info",
 
+            "vendedor_nombre",
+
+            "fecha_compra",
             "estado_pago",
             "medio_pago",
 
+            "es_garantia",
+            "es_gabi",
+
             "total_final",
-            "fecha_compra",
         ]
 
     def get_cliente_nombre(self, obj):
@@ -57,24 +72,46 @@ class VentaListSerializer(serializers.ModelSerializer):
             return obj.distribuidor.user.username
         return None
 
+    def get_cliente_info(self, obj):
+        c = obj.cliente
+        if not c:
+            return None
+        return {
+            "id": c.id,
+            "usuario_username": c.usuario.username,
+            "usuario_email": c.usuario.email,
+        }
+
+    def get_distribuidor_info(self, obj):
+        d = obj.distribuidor
+        if not d:
+            return None
+        return {
+            "id": d.id,
+            "username": d.user.username,
+            "email": d.user.email,
+        }
+
+    def get_proveedor_info(self, obj):
+        p = obj.proveedor
+        if not p:
+            return None
+        return {
+            "id": p.id,
+            "nombre": p.nombre,
+            "iniciales": p.iniciales,
+        }
 
 
 # =========================================================
-#   LIST SERIALIZER PERSONALIZADO PARA DETALLES
+#   DETALLE SERIALIZER
 # =========================================================
 class VentaDetalleListSerializer(serializers.ListSerializer):
-    """
-    Asegura que el contexto (incluyendo venta) se pase a cada ítem.
-    """
     def to_internal_value(self, data):
         self.child.context.update(self.context)
         return super().to_internal_value(data)
 
 
-
-# =========================================================
-#   DETALLE
-# =========================================================
 class VentaDetalleSerializer(serializers.ModelSerializer):
     producto_nombre = serializers.ReadOnlyField(source="producto.nombre")
     producto_info = ProductoSerializer(read_only=True, source="producto")
@@ -93,7 +130,7 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
             "precio_unitario",
 
             "fecha_vencimiento",
-            "credenciales",
+            "credenciales",   # ← renovable vive aquí dentro
             "comentario",
 
             "creado",
@@ -121,7 +158,7 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
         if not data.get("costo_unitario"):
             data["costo_unitario"] = producto.costo_base
 
-        # Fecha vencimiento
+        # Fecha vencimiento por defecto
         if venta and not data.get("fecha_vencimiento"):
             base = venta.fecha_compra
         elif not data.get("fecha_vencimiento"):
@@ -134,12 +171,22 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
                 days=producto.duracion_dias or 30
             )
 
+        # =========================================================
+        #   🔥 AGREGAR CAMPO "renovable" A LAS CREDENCIALES
+        # =========================================================
+        credenciales = data.get("credenciales", [])
+
+        for cred in credenciales:
+            if "renovable" not in cred:
+                cred["renovable"] = False  # valor por defecto
+
+        data["credenciales"] = credenciales
+
         return data
 
 
-
 # =========================================================
-#   SERIALIZER COMPLETO (DETALLE / CREAR / EDITAR)
+#   SERIALIZER COMPLETO (CREAR / EDITAR)
 # =========================================================
 class VentaSerializer(serializers.ModelSerializer):
     vendedor_nombre = serializers.ReadOnlyField(source="vendedor.username")
@@ -204,9 +251,7 @@ class VentaSerializer(serializers.ModelSerializer):
             "actualizado",
         ]
 
-    # ============================
-    # CAMPOS CALCULADOS
-    # ============================
+    # ============================ CAMPOS CALCULADOS ============================
     def get_cliente_nombre(self, obj):
         if obj.cliente:
             return obj.cliente.usuario.username
@@ -250,9 +295,7 @@ class VentaSerializer(serializers.ModelSerializer):
             "iniciales": p.iniciales,
         }
 
-    # ============================
-    # CREAR / ACTUALIZAR
-    # ============================
+    # ============================ CREAR / EDITAR ============================
     def to_internal_value(self, data):
         self.fields["detalles"].child.context.update(self.context)
         return super().to_internal_value(data)
