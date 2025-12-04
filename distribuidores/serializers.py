@@ -9,20 +9,30 @@ class UsuarioBasicSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ("id", "username", "email", "first_name", "last_name", "rol")
 
+
 class DistribuidorSerializer(serializers.ModelSerializer):
+    # Información completa del usuario (para mostrar)
     user_info = UsuarioBasicSerializer(source="user", read_only=True)
-    # Para creación por admin: permitir pasar user_id explícito
+
+    # Para crear a través del admin (write-only)
     user_id = serializers.PrimaryKeyRelatedField(
-        source="user", queryset=Usuario.objects.all(), write_only=True, required=False
+        source="user",
+        queryset=Usuario.objects.all(),
+        write_only=True,
+        required=False
     )
+
+    # 🔥 NUEVO: user_id para lectura (lo que necesita el FRONTEND)
+    user_id_read = serializers.IntegerField(source="user.id", read_only=True)
 
     class Meta:
         model = Distribuidor
         fields = (
             "id",
-            "user",       # read-only; se llena desde user_id o del request.user si es vendedor
-            "user_id",    # write-only (solo admins)
-            "user_info",  # nested
+            "user",          # read-only (objeto user)
+            "user_id",       # write-only
+            "user_id_read",  # read-only → NECESARIO para el frontend
+            "user_info",     # nested
             "empresa",
             "telefono",
             "activo",
@@ -47,10 +57,10 @@ class DistribuidorSerializer(serializers.ModelSerializer):
                 # no admin: forzar a su propio usuario
                 user = request.user
 
-        # evitar duplicados
+        # Evitar duplicados
         instance, created = Distribuidor.objects.get_or_create(user=user, defaults=validated_data)
         if not created:
-            # si ya existía, actualizamos campos opcionales
+            # Si ya existía → actualizar campos opcionales
             for k, v in validated_data.items():
                 setattr(instance, k, v)
             instance.save()
