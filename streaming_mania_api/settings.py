@@ -139,6 +139,7 @@ REST_FRAMEWORK = {
     
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "URL_FIELD_NAME": "url",
 }
 
 SIMPLE_JWT = {
@@ -180,4 +181,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # =               CORS                 =
 # ======================================
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://web-production-f804.up.railway.app",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = ["*"]
+CORS_ALLOW_METHODS = ["*"]
+
+SECURE_SSL_REDIRECT = False
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+APPEND_SLASH = False
