@@ -13,6 +13,12 @@ class Producto(models.Model):
     # Duración en días
     duracion_dias = models.PositiveIntegerField(default=30)
 
+    # 🔥 ESTADO DEL PRODUCTO (re-agregado)
+    activo = models.BooleanField(
+        default=True,
+        help_text="Indica si el producto está disponible para usar en ventas."
+    )
+
     # 🔥 NUEVOS CAMPOS PARA CUENTA COMPLETA
     es_cuenta_completa = models.BooleanField(
         default=False,
