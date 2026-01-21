@@ -104,12 +104,12 @@ WSGI_APPLICATION = "streaming_mania_api.wsgi.application"
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # PRODUCCIÓN → Supabase
+    # PRODUCCIÓN → Neon
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=1800,
-            ssl_require=True,     # <— OBLIGATORIO EN SUPABASE
+            ssl_require=True,     # <— OBLIGATORIO EN NEON
         )
     }
 else:
